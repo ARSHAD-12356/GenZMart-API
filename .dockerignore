@@ -1,0 +1,31 @@
+# Git
+.git
+.gitignore
+
+# Local development and environment files
+.env
+*.env
+Docker
+Dockerfile
+.dockerignore
+README.md
+RENDER_DEPLOYMENT.md
+
+# Development and testing scripts
+test_backend.php
+
+# Database scripts not needed at container runtime
+database/schema.sql
+database/seed.php
+
+# IDE and System files
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+scratch/
+tmp/
+temp/
