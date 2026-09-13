@@ -77,12 +77,33 @@ try {
         ]);
     }
 
-    // Resolve Role ID from database
+    // Resolve Role ID from database with dynamic fallback and auto-seeding if missing
     $targetRole = ($roleName === 'seller') ? 'Seller' : 'Customer';
     $roleStmt = $pdo->prepare("SELECT id FROM roles WHERE LOWER(name) = LOWER(:name) LIMIT 1");
     $roleStmt->execute(['name' => $targetRole]);
     $roleRow = $roleStmt->fetch();
-    $roleId = $roleRow ? (int) $roleRow['id'] : 3; // Default to Customer (3)
+
+    if ($roleRow) {
+        $roleId = (int) $roleRow['id'];
+    } else {
+        // Search for any existing role ID in roles table
+        $anyRoleStmt = $pdo->query("SELECT id FROM roles ORDER BY id ASC LIMIT 1");
+        $anyRoleRow = $anyRoleStmt ? $anyRoleStmt->fetch() : false;
+
+        if ($anyRoleRow) {
+            $roleId = (int) $anyRoleRow['id'];
+        } else {
+            // Seed default roles if roles table is unseeded
+            $pdo->exec("
+                INSERT INTO roles (id, name, description) VALUES
+                (1, 'Admin', 'System Administrator'),
+                (2, 'Seller', 'Vendor/Seller'),
+                (3, 'Customer', 'Shopper account')
+                ON DUPLICATE KEY UPDATE name=VALUES(name)
+            ");
+            $roleId = ($targetRole === 'Seller') ? 2 : 3;
+        }
+    }
 
     // Securely hash password
     $passwordHash = password_hash($password, PASSWORD_DEFAULT);
@@ -138,7 +159,24 @@ try {
     ]);
 
 } catch (PDOException $e) {
-    ResponseHelper::error('A database error occurred during registration.', 500);
+    $config = require __DIR__ . '/../../config/config.php';
+    $dbPass = $config['db']['password'] ?? '';
+    $errorMessage = $e->getMessage();
+    if (!empty($dbPass)) {
+        $errorMessage = str_replace($dbPass, '********', $errorMessage);
+    }
+    ResponseHelper::send(500, false, 'A database error occurred during registration.', null, [
+        'error_details' => $errorMessage,
+        'sql_state' => $e->getCode()
+    ]);
 } catch (Throwable $e) {
-    ResponseHelper::error('An unexpected error occurred during registration.', 500);
+    $config = require __DIR__ . '/../../config/config.php';
+    $dbPass = $config['db']['password'] ?? '';
+    $errorMessage = $e->getMessage();
+    if (!empty($dbPass)) {
+        $errorMessage = str_replace($dbPass, '********', $errorMessage);
+    }
+    ResponseHelper::send(500, false, 'An unexpected error occurred during registration.', null, [
+        'error_details' => $errorMessage
+    ]);
 }

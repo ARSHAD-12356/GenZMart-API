@@ -19,9 +19,11 @@ class AuthHelper {
         if (str_contains(strtolower($contentType), 'application/json')) {
             $raw = file_get_contents('php://input');
             $data = json_decode($raw, true);
-            return is_array($data) ? $data : [];
+            if (is_array($data) && !empty($data)) {
+                return $data;
+            }
         }
-        return $_POST;
+        return is_array($_POST) ? $_POST : [];
     }
 
     /**
