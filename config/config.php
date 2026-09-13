@@ -31,12 +31,13 @@ return [
     // Database Configuration
     // =========================================================
     'db' => [
-        'host'     => $getEnvVar('DB_HOST', 'sql105.infinityfree.com'),
+        'host'     => $getEnvVar('DB_HOST', '127.0.0.1'),
         'port'     => (int) $getEnvVar('DB_PORT', '3306'),
-        'dbname'   => $getEnvVar('DB_NAME', 'if0_42893798_genzmart_db'),
-        'username' => $getEnvVar('DB_USER', 'if0_42893798'),
-        'password' => $getEnvVar('DB_PASS', '9J8USqAXr8smx'),
-        'charset'  => $getEnvVar('DB_CHARSET', 'utf8mb4')
+        'dbname'   => $getEnvVar('DB_NAME', 'genzmart_db'),
+        'username' => $getEnvVar('DB_USER', 'root'),
+        'password' => $getEnvVar('DB_PASS', ''),
+        'charset'  => $getEnvVar('DB_CHARSET', 'utf8mb4'),
+        'ssl_ca'   => $getEnvVar('DB_SSL_CA', '')
     ],
 
 

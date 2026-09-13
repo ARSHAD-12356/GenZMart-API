@@ -50,16 +50,35 @@ Set these environment variables in your **Render Web Service Dashboard** under *
 
 | Variable Name | Required | Example / Recommended Value | Description |
 | :--- | :--- | :--- | :--- |
-| `DB_HOST` | **Yes** | `your-db-host.aivencloud.com` | Hostname/IP of your remote MySQL database. |
+| `DB_HOST` | **Yes** | `sqlXXX.googiehost.com` / `your-db-host.com` | Hostname/IP of your remote GoogieHost MySQL database. |
 | `DB_PORT` | No | `3306` | Port of your MySQL database (default: `3306`). |
 | `DB_NAME` | **Yes** | `genzmart_db` | Name of your MySQL database. |
 | `DB_USER` | **Yes** | `genzmart_user` | MySQL database username. |
-| `DB_PASS` | **Yes** | `secure_db_password` | MySQL database password. |
+| `DB_PASS` | **Yes** | `your_secure_password` | MySQL database password. |
+| `DB_SSL_CA` | Optional | `-----BEGIN CERTIFICATE-----\n...` OR `/etc/secrets/ca.pem` | Optional SSL CA certificate content OR path to mounted Secret File. Leave empty for standard MySQL. |
 | `DB_CHARSET` | No | `utf8mb4` | Character encoding (default: `utf8mb4`). |
 | `APP_ENV` | No | `production` | Application environment identifier. |
 | `APP_BASE_URL` | **Yes** | `https://genzmart-api.onrender.com` | Your deployed Render Web Service URL. |
 | `UPLOADS_URL` | No | `https://genzmart-api.onrender.com/uploads/` | Base URL for uploaded images/media. |
 | `CORS_ALLOWED_ORIGINS` | **Yes** | `https://genzmart.vercel.app,http://localhost:3000` | Comma-separated list of allowed frontend origins. |
+
+### Optional: How to Configure `DB_SSL_CA` on Render
+
+*Note: GoogieHost and standard MySQL connections do not require SSL. Leave `DB_SSL_CA` empty. If connecting to a database provider that requires SSL/TLS, `DB_SSL_CA` can be configured as follows:*
+
+#### Option A: Direct Environment Variable
+1. In Render Dashboard -> Web Service -> **Environment**, click **Add Environment Variable**.
+2. Set Key: `DB_SSL_CA`
+3. Set Value: Paste the complete text of your CA certificate (including `-----BEGIN CERTIFICATE-----` and `-----END CERTIFICATE-----`).
+4. Render passes the certificate string to PHP, which automatically writes it to a temporary certificate file at runtime for PDO.
+
+#### Option B: Render Secret File
+1. In Render Dashboard -> Web Service -> **Environment**, scroll to **Secret Files**.
+2. Click **Add Secret File**.
+3. Filename: `ca.pem`
+4. Contents: Paste the complete contents of `ca.pem`.
+5. Render mounts this file at `/etc/secrets/ca.pem`.
+6. Add Environment Variable `DB_SSL_CA=/etc/secrets/ca.pem`. PHP detects that this is an existing file path and loads it directly into PDO.
 
 ---
 

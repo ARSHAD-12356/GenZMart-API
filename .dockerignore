@@ -5,6 +5,9 @@
 # Local development and environment files
 .env
 *.env
+*.pem
+*.crt
+*.key
 Docker
 Dockerfile
 .dockerignore
