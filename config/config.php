@@ -67,7 +67,7 @@ return [
     // CORS Settings
     // =========================================================
     'cors' => [
-        'allowed_origins' => explode(',', $getEnvVar('CORS_ALLOWED_ORIGINS', '*')),
+        'allowed_origins' => explode(',', $getEnvVar('CORS_ALLOWED_ORIGINS', 'https://genzemart.vercel.app,http://localhost:3000,http://localhost:5173')),
 
         'allowed_methods' => [
             'GET',

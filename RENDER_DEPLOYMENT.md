@@ -60,7 +60,7 @@ Set these environment variables in your **Render Web Service Dashboard** under *
 | `APP_ENV` | No | `production` | Application environment identifier. |
 | `APP_BASE_URL` | **Yes** | `https://genzmart-api.onrender.com` | Your deployed Render Web Service URL. |
 | `UPLOADS_URL` | No | `https://genzmart-api.onrender.com/uploads/` | Base URL for uploaded images/media. |
-| `CORS_ALLOWED_ORIGINS` | **Yes** | `https://genzmart.vercel.app,http://localhost:3000` | Comma-separated list of allowed frontend origins. |
+| `CORS_ALLOWED_ORIGINS` | **Yes** | `https://genzemart.vercel.app,http://localhost:3000` | Comma-separated list of allowed frontend origins. |
 
 ### Optional: How to Configure `DB_SSL_CA` on Render
 

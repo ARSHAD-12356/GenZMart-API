@@ -8,28 +8,76 @@
 
 class ResponseHelper {
     /**
-     * Send CORS headers based on application configuration
+     * Send CORS headers centrally based on application configuration.
+     * Guarantees exactly ONE origin header is sent and handles OPTIONS preflight.
      */
     public static function sendCorsHeaders(): void {
-        $config = require __DIR__ . '/../config/config.php';
-        $cors = $config['cors'];
+        static $headersSent = false;
+        if ($headersSent) {
+            return;
+        }
+        $headersSent = true;
 
-        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-        
-        // Dynamically allow requested origin if it's localhost or listed in config
-        if (!empty($origin) && (in_array('*', $cors['allowed_origins']) || in_array($origin, $cors['allowed_origins']) || preg_match('/^http:\/\/localhost(:\d+)?$/', $origin))) {
-            header("Access-Control-Allow-Origin: {$origin}");
-        } else {
-            $allowedOrigins = implode(', ', $cors['allowed_origins']);
-            header("Access-Control-Allow-Origin: {$allowedOrigins}");
+        $config = require __DIR__ . '/../config/config.php';
+        $cors = $config['cors'] ?? [];
+
+        // Extract requesting Origin or Referer host
+        $requestOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
+        if (empty($requestOrigin) && !empty($_SERVER['HTTP_REFERER'])) {
+            $parsed = parse_url($_SERVER['HTTP_REFERER']);
+            if ($parsed && isset($parsed['scheme'], $parsed['host'])) {
+                $requestOrigin = $parsed['scheme'] . '://' . $parsed['host'] . (isset($parsed['port']) ? ':' . $parsed['port'] : '');
+            }
         }
 
-        header("Access-Control-Allow-Methods: " . implode(', ', $cors['allowed_methods']));
-        header("Access-Control-Allow-Headers: " . implode(', ', $cors['allowed_headers']));
+        // Process allowed origins list from config/env
+        $configuredOrigins = $cors['allowed_origins'] ?? [];
+        if (is_string($configuredOrigins)) {
+            $configuredOrigins = explode(',', $configuredOrigins);
+        }
+
+        $allowedOrigins = [];
+        foreach ((array) $configuredOrigins as $orig) {
+            $trimmed = trim($orig);
+            // Filter out old typo origin 'https://genzmart.vercel.app' and wildcard '*'
+            if (!empty($trimmed) && $trimmed !== 'https://genzmart.vercel.app' && $trimmed !== '*') {
+                $allowedOrigins[] = $trimmed;
+            }
+        }
+
+        // Ensure correct production origin and localhost origins exist in allowed set
+        $defaultAllowed = [
+            'https://genzemart.vercel.app',
+            'http://localhost:3000',
+            'http://localhost:5173',
+            'http://127.0.0.1:3000',
+            'http://127.0.0.1:5173'
+        ];
+        foreach ($defaultAllowed as $def) {
+            if (!in_array($def, $allowedOrigins, true)) {
+                $allowedOrigins[] = $def;
+            }
+        }
+
+        // Determine single valid origin string to output
+        $selectedOrigin = 'https://genzemart.vercel.app'; // Default production fallback
+        if (!empty($requestOrigin)) {
+            if (in_array($requestOrigin, $allowedOrigins, true) || preg_match('/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i', $requestOrigin)) {
+                $selectedOrigin = $requestOrigin;
+            }
+        }
+
+        $allowedMethods = implode(', ', $cors['allowed_methods'] ?? ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH']);
+        $allowedHeaders = implode(', ', $cors['allowed_headers'] ?? ['Content-Type', 'Authorization', 'X-Requested-With']);
+
+        // Send single CORS headers
+        header("Access-Control-Allow-Origin: {$selectedOrigin}");
+        header("Access-Control-Allow-Methods: {$allowedMethods}");
+        header("Access-Control-Allow-Headers: {$allowedHeaders}");
         header("Access-Control-Allow-Credentials: true");
         header("Content-Type: application/json; charset=UTF-8");
 
-        // Handle preflight OPTIONS request
+        // Handle preflight OPTIONS request cleanly
         if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
             http_response_code(200);
             exit();
