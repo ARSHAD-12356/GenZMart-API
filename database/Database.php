@@ -92,9 +92,78 @@ class Database {
             }
 
             self::$instance = new PDO($dsn, $dbConfig['username'], $dbConfig['password'], $options);
+            self::ensureSchemaIntegrity(self::$instance);
         }
 
         return self::$instance;
+    }
+
+    /**
+     * Checks database tables for missing AUTO_INCREMENT attributes (common when
+     * phpMyAdmin SQL exports omit trailing ALTER TABLE MODIFY statements during import)
+     * and automatically applies ALTER TABLE to restore AUTO_INCREMENT safely.
+     *
+     * @param PDO $pdo
+     */
+    public static function ensureSchemaIntegrity(PDO $pdo): void {
+        static $checked = false;
+        if ($checked) {
+            return;
+        }
+        $checked = true;
+
+        try {
+            // Check EXTRA column attribute for users.id
+            $stmt = $pdo->query("
+                SELECT EXTRA 
+                FROM information_schema.COLUMNS 
+                WHERE TABLE_SCHEMA = DATABASE() 
+                  AND TABLE_NAME = 'users' 
+                  AND COLUMN_NAME = 'id'
+                LIMIT 1
+            ");
+            $extra = $stmt ? $stmt->fetchColumn() : '';
+
+            if (is_string($extra) && strpos(strtolower($extra), 'auto_increment') === false) {
+                $alterQueries = [
+                    "ALTER TABLE `roles` MODIFY `id` INT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `users` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `seller_profiles` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `user_addresses` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `user_sessions` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `categories` MODIFY `id` INT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `subcategories` MODIFY `id` INT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `brands` MODIFY `id` INT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `products` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `product_images` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `product_variants` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `carts` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `cart_items` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `wishlists` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `wishlist_items` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `orders` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `order_items` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `order_addresses` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `order_status_history` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `reviews` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `review_images` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `coupons` MODIFY `id` INT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `coupon_usage` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `notifications` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT",
+                    "ALTER TABLE `site_settings` MODIFY `id` INT UNSIGNED NOT NULL AUTO_INCREMENT"
+                ];
+
+                foreach ($alterQueries as $sql) {
+                    try {
+                        $pdo->exec($sql);
+                    } catch (Throwable $ignored) {
+                        // Silently ignore individual table alter failures if table missing or already modified
+                    }
+                }
+            }
+        } catch (Throwable $ignored) {
+            // Silently ignore if information_schema is restricted or unreadable
+        }
     }
 
     /**
